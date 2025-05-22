@@ -51,34 +51,48 @@ class User {
 
     public function authenticate($username, $password) {
         try {
+            // Debug log
+            error_log("Starting authentication for user: " . $username);
+
             if (empty($username) || empty($password)) {
+                error_log("Empty username or password");
                 return ['success' => false, 'message' => 'Username and password are required'];
             }
 
-            // Get user by username or email
-            $sql = "SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1";
+            $sql = "SELECT * FROM users WHERE username = ? OR email = ?";
             $stmt = $this->db->executeQuery($sql, [$username, $username]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            // Debug user data
+            error_log("User data found: " . ($user ? 'Yes' : 'No'));
+
             if (!$user) {
-                return ['success' => false, 'message' => 'User not found'];
+                error_log("User not found: " . $username);
+                return ['success' => false, 'message' => 'Invalid credentials'];
             }
 
-            if (!isset($user['password']) || empty($user['password'])) {
+            // Verify password field exists
+            if (!isset($user['password'])) {
                 error_log("Password field missing for user: " . $username);
-                return ['success' => false, 'message' => 'Invalid account configuration'];
+                return ['success' => false, 'message' => 'Account configuration error'];
             }
 
+            // Debug password verification
+            error_log("Verifying password for user: " . $username);
+            
             if (password_verify($password, $user['password'])) {
-                // Remove sensitive data before returning
+                error_log("Password verified successfully");
+                // Remove sensitive data
                 unset($user['password']);
                 return ['success' => true, 'user' => $user];
             }
 
-            return ['success' => false, 'message' => 'Invalid password'];
+            error_log("Invalid password for user: " . $username);
+            return ['success' => false, 'message' => 'Invalid credentials'];
+
         } catch (Exception $e) {
             error_log("Authentication Error: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Authentication failed'];
+            throw $e;
         }
     }
 }

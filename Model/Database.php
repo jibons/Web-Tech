@@ -27,12 +27,15 @@ class Database {
 
     public function executeQuery($sql, $params = []) {
         try {
+            error_log("Executing SQL: " . $sql);
+            error_log("Parameters: " . json_encode($params));
+            
             $stmt = $this->conn->prepare($sql);
             $stmt->execute($params);
             return $stmt;
         } catch(PDOException $e) {
-            error_log("Query Error: " . $e->getMessage());
-            throw new Exception("Database query failed");
+            error_log("Database Error: " . $e->getMessage());
+            throw new Exception("Database operation failed");
         }
     }
 

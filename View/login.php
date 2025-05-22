@@ -17,34 +17,32 @@ unset($_SESSION['registration_success']);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
-        error_log("Login form submitted");
         $db = new Database();
         $userModel = new User($db);
 
         $username = trim($_POST['username'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        error_log("Attempting login for username: " . $username);
-        
-        $result = $userModel->authenticate($username, $password);
-        error_log("Authentication result: " . json_encode($result));
-        
-        if ($result['success']) {
-            $_SESSION['user_id'] = $result['user']['id'];
-            $_SESSION['username'] = $result['user']['username'];
-            $_SESSION['role'] = $result['user']['role'];
-            
-            error_log("Login successful. Redirecting to dashboard.");
-            header('Location: dashboard.php');
-            exit();
+        if (empty($username) || empty($password)) {
+            $error = "Please enter both username and password";
         } else {
-            $error = $result['message'];
-            error_log("Login failed: " . $error);
+            $result = $userModel->authenticate($username, $password);
+            
+            if ($result['success']) {
+                $_SESSION['user_id'] = $result['user']['id'];
+                $_SESSION['username'] = $result['user']['username'];
+                $_SESSION['role'] = $result['user']['role'];
+                
+                header('Location: dashboard.php');
+                exit();
+            } else {
+                $error = $result['message'];
+                error_log("Login failed: " . $error);
+            }
         }
     } catch(Exception $e) {
         $error = "An error occurred. Please try again later.";
         error_log("Login Error: " . $e->getMessage());
-        error_log("Stack trace: " . $e->getTraceAsString());
     }
 }
 ?>
