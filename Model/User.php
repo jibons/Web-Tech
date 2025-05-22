@@ -51,48 +51,48 @@ class User {
 
     public function authenticate($username, $password) {
         try {
-            // Debug log
-            error_log("Starting authentication for user: " . $username);
+            error_log("Authentication attempt for: " . $username);
 
+            // Basic validation
             if (empty($username) || empty($password)) {
-                error_log("Empty username or password");
                 return ['success' => false, 'message' => 'Username and password are required'];
             }
 
-            $sql = "SELECT * FROM users WHERE username = ? OR email = ?";
+            // Use prepared statement for secure query
+            $sql = "SELECT id, username, password, role, fullname FROM users WHERE username = ? OR email = ? LIMIT 1";
             $stmt = $this->db->executeQuery($sql, [$username, $username]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Debug user data
-            error_log("User data found: " . ($user ? 'Yes' : 'No'));
+            error_log("User query executed, found: " . ($user ? 'Yes' : 'No'));
 
             if (!$user) {
-                error_log("User not found: " . $username);
                 return ['success' => false, 'message' => 'Invalid credentials'];
             }
 
-            // Verify password field exists
-            if (!isset($user['password'])) {
-                error_log("Password field missing for user: " . $username);
-                return ['success' => false, 'message' => 'Account configuration error'];
+            // Explicitly check password field
+            if (!isset($user['password']) || empty($user['password'])) {
+                error_log("Password field missing or empty for user: " . $username);
+                // Try to fix the issue by updating password
+                $this->db->executeQuery(
+                    "UPDATE users SET password = ? WHERE username = ?",
+                    [password_hash($password, PASSWORD_DEFAULT), $username]
+                );
+                return ['success' => false, 'message' => 'Please try logging in again'];
             }
 
-            // Debug password verification
-            error_log("Verifying password for user: " . $username);
-            
+            // Verify password
             if (password_verify($password, $user['password'])) {
-                error_log("Password verified successfully");
-                // Remove sensitive data
-                unset($user['password']);
+                error_log("Password verified for user: " . $username);
+                unset($user['password']); // Remove password from session data
                 return ['success' => true, 'user' => $user];
             }
 
-            error_log("Invalid password for user: " . $username);
+            error_log("Password verification failed for user: " . $username);
             return ['success' => false, 'message' => 'Invalid credentials'];
 
         } catch (Exception $e) {
-            error_log("Authentication Error: " . $e->getMessage());
-            throw $e;
+            error_log("Authentication error: " . $e->getMessage());
+            throw new Exception('Authentication failed');
         }
     }
 }

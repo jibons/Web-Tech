@@ -68,6 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="container">
         <div class="login-form">
+            <?php if(isset($_SESSION['logout_message'])): ?>
+                <div class="success"><?php echo htmlspecialchars($_SESSION['logout_message']); ?></div>
+                <?php unset($_SESSION['logout_message']); ?>
+            <?php endif; ?>
             <?php if($registration_success): ?>
                 <div class="success">Registration successful! Please login.</div>
             <?php endif; ?>
