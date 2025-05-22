@@ -7,6 +7,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 error_log("Login page loaded");
 
+if (isset($_SESSION['user_id'])) {
+    header('Location: dashboard.php');
+    exit();
+}
 $error = '';
 $registration_success = isset($_SESSION['registration_success']) ? $_SESSION['registration_success'] : false;
 unset($_SESSION['registration_success']);
