@@ -7,10 +7,4 @@ A secure PHP-based voting system with user authentication and real-time results.
 - Active elections display
 - Secure vote casting
 - Vote history tracking
-- Admin dashboard
-
-## Setup
-1. Clone repository
-2. Import database
-3. Configure database connection
-4. Start XAMPP server
+- Admin dashboard 
