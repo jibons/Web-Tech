@@ -42,15 +42,15 @@ function validateRegistrationForm(e) {
         isValid = false;
     }
 
-    // Validate Voter ID (alphanumeric, 8-10 characters)
-    if (!/^[A-Za-z0-9]{8,10}$/.test(voterId)) {
-        errorMessage += 'Voter ID should be 8-10 characters long and contain only letters and numbers\n';
+    // Validate Voter ID (alphanumeric, 6-11 characters)
+    if (!/^[A-Za-z0-9]{6,11}$/.test(voterId)) {
+        errorMessage += 'Voter ID should be 6-15 characters long and contain only letters and numbers\n';
         isValid = false;
     }
 
-    // Validate Phone Number (10 digits)
-    if (!/^\d{10}$/.test(phone)) {
-        errorMessage += 'Phone number should be 10 digits\n';
+    // Validate Phone Number (11 digits)
+    if (!/^\d{11}$/.test(phone)) {
+        errorMessage += 'Phone number should be 11 digits\n';
         isValid = false;
     }
 

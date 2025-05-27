@@ -1,7 +1,7 @@
 <?php
-require_once('../config/session_handler.php');
-require_once('../Model/Database.php');
-require_once('../Model/User.php');
+include('../config/session_handler.php');
+include('../Model/Database.php');
+include('../Model/User.php');
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -18,25 +18,25 @@ unset($_SESSION['registration_success']);
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         $db = new Database();
-        $userModel = new User($db);
+        $userModel = new User();
 
-        $username = trim($_POST['username'] ?? '');
+        $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        if (empty($username) || empty($password)) {
-            $error = "Please enter both username and password";
+        if (empty($email) || empty($password)) {
+            $error = "Please enter both email and password";
         } else {
-            $result = $userModel->authenticate($username, $password);
+            $result = $userModel->authenticate($email, $password);
             
             if ($result['success']) {
                 $_SESSION['user_id'] = $result['user']['id'];
                 $_SESSION['username'] = $result['user']['username'];
-                $_SESSION['role'] = $result['user']['role'];
+                $_SESSION['role'] = 'voter';
                 
                 header('Location: dashboard.php');
                 exit();
             } else {
-                $error = $result['message'];
+                $error = "Invalid email or password";
                 error_log("Login failed: " . $error);
             }
         }
@@ -81,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
                 </div>
 
                 <div class="form-group">
