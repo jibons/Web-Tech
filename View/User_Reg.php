@@ -1,51 +1,43 @@
 <?php
-session_start();
-require_once(__DIR__ . '/../Model/User.php');
+include "../Model/Database.php";
+include "../Model/User.php";
+include "../Control/upload_handler.php";
+include "../Config/session_handler.php";
 
+
+use Model\Database;
+use Model\User;
+
+$db = Database::getInstance();
+$userModel = new User();
+$uploadHandler = new UploadHandler(dirname(__DIR__) . '/uploads/');
+
+$errors = [];
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $errors = [];
-    
-    // Enhanced data validation with more specific error messages
-    $userData = [
-        'username' => trim($_POST['username'] ?? ''),
-        'email' => trim($_POST['email'] ?? ''),
-        'fullname' => trim($_POST['fullname'] ?? ''),
-        'password' => $_POST['password'] ?? '',
-        'confirm_password' => $_POST['confirm_password'] ?? '',
-        'voter_id' => trim($_POST['voter_id'] ?? ''),
-        'phone' => trim($_POST['phone'] ?? ''),
-        'gender' => $_POST['gender'] ?? '',
-        'dob' => $_POST['dob'] ?? ''
-    ];
+    try {
+        $userData = [
+            'fullname' => filter_input(INPUT_POST, 'fullname', FILTER_SANITIZE_STRING),
+            'username' => filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING),
+            'email' => filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL),
+            'gender' => $_POST['gender'],
+            'dob' => $_POST['dob'],
+            'voter_id' => $_POST['voter_id'],
+            'phone' => $_POST['phone'],
+            'password' => $_POST['password']
+        ];
 
-    // Validate password match first
-    if ($userData['password'] !== $userData['confirm_password']) {
-        $errors[] = "Passwords do not match";
-    }
-
-    // Only proceed if passwords match
-    if (empty($errors)) {
-        try {
-            $user = new User();
-            $result = $user->register($userData);
-            
-            if ($result['success']) {
-                $_SESSION['success'] = "Registration successful! Please login.";
-                header("Location: login.php");
-                exit();
-            } else {
-                if (isset($result['errors']) && is_array($result['errors'])) {
-                    $errors = array_merge($errors, $result['errors']);
-                } elseif (isset($result['message'])) {
-                    $errors[] = $result['message'];
-                } else {
-                    $errors[] = "Registration failed. Please try again.";
-                }
-            }
-        } catch(Exception $e) {
-            error_log("Registration Error: " . $e->getMessage());
-            $errors[] = "Registration failed. Please try again.";
+        $result = $userModel->register($userData);
+        
+        if ($result['success']) {
+            $_SESSION['registration_success'] = true;
+            header("Location: login.php");
+            exit();
+        } else {
+            $errors[] = $result['message'];
         }
+    } catch(Exception $e) {
+        $errors[] = "Registration failed: " . $e->getMessage();
+        error_log("Registration Error: " . $e->getMessage());
     }
 }
 ?>
@@ -66,7 +58,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <a href="Home.php">Home</a>
         <a href="User_Reg.php">Register</a>
         <a href="login.php">Login</a>
-    
     </div>
 
     <div class="container">

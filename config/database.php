@@ -1,66 +1,20 @@
 <?php
-namespace Config;
+class DatabaseConfig {
+    private static $host = 'localhost';
+    private static $dbname = 'voting_system';
+    private static $username = 'root';
+    private static $password = '';
 
-use PDO;
-use PDOException;
-
-class Database {
-    private static $instance = null;
-    private $conn;
-
-    private function __construct() {
-        $host = "localhost";
-        $db_name = "voting_system";
-        $username = "root";
-        $password = "";
-
+    public static function getConnection() {
         try {
-            $this->conn = new PDO(
-                "mysql:host={$host};dbname={$db_name}",
-                $username,
-                $password
-            );
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $dsn = "mysql:host=".self::$host.";dbname=".self::$dbname.";charset=utf8mb4";
+            $pdo = new PDO($dsn, self::$username, self::$password);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            return $pdo;
         } catch(PDOException $e) {
-            die("Connection Error: " . $e->getMessage());
+            error_log("Connection Error: " . $e->getMessage());
+            throw new Exception("Database connection failed");
         }
-    }
-
-    public static function getInstance() {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
-
-    public function getConnection() {
-        return $this->conn;
-    }
-
-    public function executeQuery($sql, $params = []) {
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute($params);
-        return $stmt;
-    }
-
-    public function lastInsertId() {
-        return $this->conn->lastInsertId();
-    }
-
-    public function beginTransaction() {
-        return $this->conn->beginTransaction();
-    }
-
-    public function commit() {
-        return $this->conn->commit();
-    }
-
-    public function rollBack() {
-        return $this->conn->rollBack();
-    }
-
-    public function inTransaction() {
-        return $this->conn->inTransaction();
     }
 }
-

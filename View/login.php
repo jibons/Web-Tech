@@ -1,52 +1,56 @@
 <?php
-include('../config/session_handler.php');
-include('../Model/Database.php');
-include('../Model/User.php');
+session_start();
+include "../Model/Database.php";
+include "../Model/User.php";
+
+use Model\User;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-error_log("Login page loaded");
 
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard.php');
     exit();
 }
+
 $error = '';
 $registration_success = isset($_SESSION['registration_success']) ? $_SESSION['registration_success'] : false;
 unset($_SESSION['registration_success']);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
-        $db = new Database();
         $userModel = new User();
+        
+        $username = trim(filter_input(INPUT_POST, 'username', FILTER_SANITIZE_FULL_SPECIAL_CHARS));
+        $password = trim($_POST['password'] ?? '');
 
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
+        if (empty($username) || empty($password)) {
+            throw new Exception("Please enter both username and password");
+        }
 
-        if (empty($email) || empty($password)) {
-            $error = "Please enter both email and password";
-        } else {
-            $result = $userModel->authenticate($email, $password);
+        $result = $userModel->authenticate($username, $password);
+        
+        if ($result['success']) {
             
-            if ($result['success']) {
-                $_SESSION['user_id'] = $result['user']['id'];
-                $_SESSION['username'] = $result['user']['username'];
-                $_SESSION['role'] = 'voter';
-                
-                header('Location: dashboard.php');
-                exit();
-            } else {
-                $error = "Invalid email or password";
-                error_log("Login failed: " . $error);
-            }
+            session_regenerate_id(true);
+            $_SESSION['user_id'] = $result['user']['id'];
+            $_SESSION['username'] = $result['user']['username'];
+            $_SESSION['fullname'] = $result['user']['fullname'];
+            $_SESSION['logged_in'] = true;
+            
+            error_log("Login successful for user: " . $username);
+            header('Location: dashboard.php');
+            exit();
+        } else {
+            $error = $result['message'];
+            error_log("Login failed for user: " . $username . " - " . $error);
         }
     } catch(Exception $e) {
-        $error = "An error occurred. Please try again later.";
+        $error = $e->getMessage();
         error_log("Login Error: " . $e->getMessage());
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="header">
-        <h1>Login to Vote</h1>
+        <h1>Online Voting System</h1>
     </div>
 
     <div class="nav">
@@ -67,36 +71,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <div class="container">
-        <div class="login-form">
-            <?php if(isset($_SESSION['logout_message'])): ?>
-                <div class="success"><?php echo htmlspecialchars($_SESSION['logout_message']); ?></div>
-                <?php unset($_SESSION['logout_message']); ?>
-            <?php endif; ?>
-            <?php if($registration_success): ?>
-                <div class="success">Registration successful! Please login.</div>
-            <?php endif; ?>
-            <?php if(isset($error)): ?>
-                <div class="error"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
+        <div class="form-section">
+            <form method="POST" action="" class="login-form">
+                <h2>Login to Your Account</h2>
+                
+                <?php if ($error): ?>
+                    <div class="alert error"><?php echo htmlspecialchars($error); ?></div>
+                <?php endif; ?>
 
-            <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+                <?php if (isset($_SESSION['registration_success'])): ?>
+                    <div class="alert success">Registration successful! Please login.</div>
+                    <?php unset($_SESSION['registration_success']); ?>
+                <?php endif; ?>
+
                 <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
+                    <label for="username">Username or Email</label>
+                    <input type="text" id="username" name="username" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Password:</label>
+                    <label for="password">Password</label>
                     <input type="password" id="password" name="password" required>
                 </div>
 
-                <button type="submit" class="submit-btn">Login</button>
-            </form>
+                <div class="form-group">
+                    <div class="button-group">
+                        <a href="Home.php" class="btn-back">Back</a>
+                        <button type="submit" class="btn-small">Login</button>
+                    </div>
+                </div>
 
-            <div class="links">
-                <p>Don't have an account? <a href="User_Reg.php">Register here</a></p>
-            </div>
+                <div class="links">
+                    <a href="User_Reg.php">Create New Account</a>
+                    <span> | </span>
+                    <a href="forgot-password.php">Forgot Password?</a>
+                </div>
+            </form>
         </div>
     </div>
+
+    <script src="js/validation.js"></script>
 </body>
 </html>

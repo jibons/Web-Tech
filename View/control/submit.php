@@ -1,54 +1,74 @@
 <?php
-require_once('../../config/session_handler.php');
-require_once('../../Model/User.php');
-require_once('../../Model/Database.php');
+session_start();
+include "../config/database.php";
+include "../config/session_handler.php";
+use Model\Database;
+if (!isLoggedIn()) {
+    header("Location: ../login.php");
+    exit();
+}
+$db = new Database();
+$conn = $db->getConnection();
 
-// Check if user is logged in
-checkAuth();
+$stmt = $conn->prepare("SELECT id, title FROM elections WHERE status = 'active' LIMIT 1");
+$stmt->execute();
+$election = $stmt->get_result()->fetch_assoc();
 
-// Check if user has already voted
-try {
-    $db = new Database();
-    $hasVoted = $db->executeQuery(
-        "SELECT id FROM votes WHERE user_id = ?",
-        [$_SESSION['user_id']]
-    )->rowCount() > 0;
-
-    if ($hasVoted) {
-        $_SESSION['error'] = "You have already cast your vote";
-        header('Location: ../dashboard.php');
-        exit();
-    }
-
-    // Get list of candidates
-    $candidates = $db->executeQuery(
-        "SELECT id, name, party, position, manifesto FROM candidates WHERE status = 'active'"
-    )->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
-    $_SESSION['error'] = "System error: " . $e->getMessage();
-    header('Location: ../dashboard.php');
+if (!$election) {
+    $_SESSION['error'] = "No active election at the moment.";
+    header("Location: ../Home.php");
     exit();
 }
 
-// Handle vote submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        if (!isset($_POST['candidate_id']) || empty($_POST['candidate_id'])) {
-            throw new Exception("Please select a candidate");
-        }
+$stmt = $conn->prepare("SELECT id FROM votes WHERE election_id = ? AND user_id = ?");
+$stmt->bind_param("ii", $election['id'], $_SESSION['user_id']);
+$stmt->execute();
+if ($stmt->get_result()->num_rows > 0) {
+    $_SESSION['error'] = "You have already voted in this election.";
+    header("Location: ../Home.php");
+    exit();
+}
 
-        $user = new User();
-        $result = $user->vote($_SESSION['user_id'], $_POST['candidate_id']);
+$stmt = $conn->prepare("SELECT id, name, party, photo, bio FROM candidates WHERE election_id = ?");
+$stmt->bind_param("i", $election['id']);
+$stmt->execute();
+$candidates = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (isset($_POST['candidate'])) {
+        $candidate_id = $_POST['candidate'];
         
-        if ($result['success']) {
-            $_SESSION['success'] = "Your vote has been recorded successfully!";
-            header('Location: ../dashboard.php');
-            exit();
+       
+        $stmt = $conn->prepare("SELECT id FROM candidates WHERE id = ? AND election_id = ?");
+        $stmt->bind_param("ii", $candidate_id, $election['id']);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows === 1) {
+        
+            $stmt = $conn->prepare("INSERT INTO votes (election_id, user_id, candidate_id) VALUES (?, ?, ?)");
+            $stmt->bind_param("iii", $election['id'], $_SESSION['user_id'], $candidate_id);
+            
+            if ($stmt->execute()) {
+            
+                $action = "Vote Cast";
+                $description = "Vote cast in election: " . $election['title'];
+                $ip = $_SERVER['REMOTE_ADDR'];
+                
+                $log_stmt = $conn->prepare("INSERT INTO activity_log (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)");
+                $log_stmt->bind_param("isss", $_SESSION['user_id'], $action, $description, $ip);
+                $log_stmt->execute();
+
+                $_SESSION['success'] = "Your vote has been recorded successfully!";
+                header("Location: ../Home.php");
+                exit();
+            } else {
+                $_SESSION['error'] = "Error recording your vote. Please try again.";
+            }
         } else {
-            throw new Exception($result['message']);
+            $_SESSION['error'] = "Invalid candidate selection.";
         }
-    } catch (Exception $e) {
-        $_SESSION['error'] = $e->getMessage();
+    } else {
+        $_SESSION['error'] = "Please select a candidate.";
     }
 }
 ?>
@@ -57,45 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cast Your Vote</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .candidate-card {
-            background: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-        .candidate-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .candidate-info {
-            margin: 10px 0;
-        }
-        .party-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            background: #e9ecef;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-        .vote-button {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .vote-button:hover {
-            background: #218838;
-        }
-    </style>
+    <link rel="stylesheet" href="../View/css/style.css">
 </head>
 <body>
     <div class="header">
@@ -103,40 +87,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <div class="nav">
-        <a href="../dashboard.php">Dashboard</a>
-        <a href="../results.php">Results</a>
-        <a href="../logout.php">Logout</a>
+        <a href="../View/Home.php">Home</a>
+        <a href="../View/User_Reg.php">Register</a>
+        <a href="../View/login.php">Login</a>
     </div>
 
     <div class="container">
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="alert error"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></div>
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert success"> <?php echo $_SESSION['success']; unset($_SESSION['success']); ?> </div>
         <?php endif; ?>
-
-        <form method="POST" action="">
-            <div class="candidates-grid">
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert error"> <?php echo $_SESSION['error']; unset($_SESSION['error']); ?> </div>
+        <?php endif; ?>
+        <div class="voting-form">
+            <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+                <h2>Select Your Candidate</h2>
                 <?php if (!empty($candidates)): ?>
-                    <?php foreach ($candidates as $candidate): ?>
-                        <div class="candidate-card">
-                            <div class="candidate-info">
-                                <h3><?php echo htmlspecialchars($candidate['name']); ?></h3>
-                                <span class="party-badge">
-                                    <?php echo htmlspecialchars($candidate['party']); ?>
-                                </span>
-                                <p><strong>Position:</strong> <?php echo htmlspecialchars($candidate['position']); ?></p>
-                                <p><?php echo htmlspecialchars($candidate['manifesto']); ?></p>
-                            </div>
-                            <button type="submit" name="candidate_id" value="<?php echo $candidate['id']; ?>" 
-                                    class="vote-button">
-                                Vote for <?php echo htmlspecialchars($candidate['name']); ?>
-                            </button>
+                    <?php foreach ($candidates as $index => $candidate): ?>
+                        <?php $inputId = 'candidate_' . $candidate['id']; ?>
+                        <div class="candidate">
+                            <input type="radio" name="candidate" id="<?php echo $inputId; ?>" value="<?php echo $candidate['id']; ?>" <?php echo $index === 0 ? 'required' : ''; ?>>
+                            <label for="<?php echo $inputId; ?>"><?php echo htmlspecialchars($candidate['name']); ?></label>
+                            <p><?php echo htmlspecialchars($candidate['party']); ?></p>
+                            <?php if (!empty($candidate['photo'])): ?>
+                                <img src="../../uploads/photos/<?php echo htmlspecialchars($candidate['photo']); ?>" alt="<?php echo htmlspecialchars($candidate['name']); ?>" style="max-width:100px;">
+                            <?php endif; ?>
+                            <?php if (!empty($candidate['bio'])): ?>
+                                <p><?php echo htmlspecialchars($candidate['bio']); ?></p>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <p>No candidates are currently available for voting.</p>
+                    <p>No candidates available for this election.</p>
                 <?php endif; ?>
-            </div>
-        </form>
+                <button type="submit" class="submit-btn">Submit Vote</button>
+            </form>
+        </div>
+        <div class="links">
+            <a href="../View/Home.php">Back to Home</a>
+        </div>
     </div>
 </body>
 </html>
