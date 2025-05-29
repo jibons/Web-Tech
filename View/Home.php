@@ -17,9 +17,7 @@
             <a href="User_Reg.php">Register</a>
             <a href="login.php">Login</a>
         <?php else: ?>
-            <?php if($_SESSION['role'] === 'admin'): ?>
-                <a href="dashboard.php">Dashboard</a>
-            <?php endif; ?>
+            <a href="dashboard.php">Dashboard</a>
             <a href="submit.php">Cast Vote</a>
             <a href="logout.php">Logout</a>
         <?php endif; ?>
@@ -69,8 +67,9 @@
                 </div>
             <?php else: ?>
                 <div class="login-prompt">
-                    <p>Please <a href="login.php">login</a> to cast your vote or 
-                    <a href="User_Reg.php">register</a> if you haven't already.</p>
+                    <h2>User Access</h2>
+                    <p>If you have an account, please <a href="login.php">Login</a></p>
+                    <p>If you don't have an account, please <a href="User_Reg.php">Register</a></p>
                 </div>
             <?php endif; ?>
         </div>

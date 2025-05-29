@@ -1,9 +1,6 @@
 <?php
-session_start();
 include "../config/session_handler.php";
 include "../Model/Database.php";
-
-
 use Model\Database;
 
 requireLogin();

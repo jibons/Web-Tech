@@ -2,7 +2,9 @@
 session_start();
 include "../Model/Database.php";
 include "../Model/User.php";
+include "../config/session_handler.php";
 
+use Model\Database;
 use Model\User;
 
 error_reporting(E_ALL);

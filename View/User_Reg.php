@@ -1,9 +1,9 @@
 <?php
+session_start(); 
 include "../Model/Database.php";
 include "../Model/User.php";
 include "../Control/upload_handler.php";
 include "../Config/session_handler.php";
-
 
 use Model\Database;
 use Model\User;

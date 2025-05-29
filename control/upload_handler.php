@@ -2,23 +2,24 @@
 class UploadHandler {
     private $uploadDir;
     
-    public function __construct($uploadDir = '../uploads/') {
-        $this->uploadDir = $uploadDir;
+    public function __construct($upload = '../uploads/') {
+        $this->uploadDir = $upload;
         if (!file_exists($this->uploadDir)) {
             mkdir($this->uploadDir, 0777, true);
         }
     }
 
-    public function uploadFile($file, $allowedTypes = ['jpg', 'jpeg', 'png', 'pdf']) {
+    public function uploadFile($file) {
         if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
             return ['success' => false, 'error' => 'No file uploaded or upload error'];
         }
 
         $fileInfo = pathinfo($file['name']);
         $extension = strtolower($fileInfo['extension']);
-
-        if (!in_array($extension, $allowedTypes)) {
-            return ['success' => false, 'error' => 'Invalid file type'];
+        
+        // Only allow images
+        if (!in_array($extension, ['jpg', 'jpeg', 'png'])) {
+            return ['success' => false, 'error' => 'Only JPG and PNG files are allowed'];
         }
 
         $newFilename = uniqid() . '.' . $extension;
