@@ -8,10 +8,10 @@ if (!isLoggedIn()) {
     header("Location: ../login.php");
     exit();
 }
-$db = new Database();
-$conn = $db->getConnection();
+$db = new mydb();
+$conobj = $db->createConnection();
 
-$stmt = $conn->prepare("SELECT id, title FROM elections WHERE status = 'active' LIMIT 1");
+$stmt = $conobj->prepare("SELECT id, title FROM elections WHERE status = 'active' LIMIT 1");
 $stmt->execute();
 $election = $stmt->get_result()->fetch_assoc();
 
