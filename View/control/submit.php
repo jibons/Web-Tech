@@ -30,7 +30,8 @@ if ($stmt->get_result()->num_rows > 0) {
     exit();
 }
 
-$stmt = $conn->prepare("SELECT id, name, party, photo, bio FROM candidates WHERE election_id = ?");
+
+$stmt = $conn->prepare("SELECT id, name, party, position, manifesto, photo FROM candidates WHERE election_id = ?");
 $stmt->bind_param("i", $election['id']);
 $stmt->execute();
 $candidates = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -38,16 +39,17 @@ $candidates = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     try {
-        if (isset($_POST['candidate'])) {
-            $candidate_id = $_POST['candidate'];
+  
+        if (isset($_POST['candidate_id'])) {
+            $candidate_id = $_POST['candidate_id'];
             
-            // Verify candidate exists and belongs to active election
+            
             $stmt = $conn->prepare("SELECT id FROM candidates WHERE id = ? AND election_id = ?");
             $stmt->bind_param("ii", $candidate_id, $election['id']);
             $stmt->execute();
             
             if ($stmt->get_result()->num_rows === 1) {
-                // Record the vote
+    
                 $stmt = $conn->prepare("INSERT INTO votes (election_id, user_id, candidate_id) VALUES (?, ?, ?)");
                 $stmt->bind_param("iii", $election['id'], $_SESSION['user_id'], $candidate_id);
                 
@@ -61,6 +63,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             } else {
                 throw new Exception("Invalid candidate selection.");
             }
+        } else {
+            throw new Exception("Please select a candidate to vote.");
         }
     } catch (Exception $e) {
         $_SESSION['error'] = $e->getMessage();
@@ -75,8 +79,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <title>Cast Your Vote</title>
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-       Fatal error: Uncaught Error: Class "User" not found in C:\xampp\htdocs\WT\View\login.php:23 Stack trace: #0 {main} thrown in C:\xampp\htdocs\WT\View\login.php on line 23
 </head>
 <body>
     <div class="header">
@@ -99,16 +101,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <?php if (!empty($candidates)): ?>
                     <?php foreach ($candidates as $candidate): ?>
                         <div class="candidate-card">
+                            <?php if (!empty($candidate['photo'])): ?>
+                                <img src="<?php echo htmlspecialchars($candidate['photo']); ?>" 
+                                     alt="<?php echo htmlspecialchars($candidate['name']); ?>">
+                            <?php endif; ?>
                             <div class="candidate-info">
                                 <h3><?php echo htmlspecialchars($candidate['name']); ?></h3>
-                                <span class="party-badge">
-                                    <?php echo htmlspecialchars($candidate['party']); ?>
-                                </span>
+                                <span><?php echo htmlspecialchars($candidate['party']); ?></span>
                                 <p><strong>Position:</strong> <?php echo htmlspecialchars($candidate['position']); ?></p>
                                 <p><?php echo htmlspecialchars($candidate['manifesto']); ?></p>
                             </div>
-                            <button type="submit" name="candidate_id" value="<?php echo $candidate['id']; ?>" 
-                                    class="vote-button">
+                            <button type="submit" name="candidate_id" value="<?php echo $candidate['id']; ?>">
                                 Vote for <?php echo htmlspecialchars($candidate['name']); ?>
                             </button>
                         </div>
