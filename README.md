@@ -1,6 +1,6 @@
 # Online Voting System
 
-A secure PHP-based voting system with user authentication and real-time results.
+A secure PHP-based voting system 
 
 ## Features
 - User registration and authentication
